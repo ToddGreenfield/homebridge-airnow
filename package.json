@@ -1,0 +1,31 @@
+{
+  "name": "homebridge-airnow",
+  "version": "0.0.1",
+  "description": "Homebridge plugin for AirNow (Air Quality)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ToddGreenfield/homebridge-airnow.git"
+  },
+  "keywords": [
+    "homebridge-plugin",
+    "homebridge",
+    "airnow"
+  ],
+  "engines": {
+    "node": ">=0.12.0",
+    "homebridge": ">=0.2.0"
+  },
+  "author": "Todd Greenfield ***REMOVED***",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ToddGreenfield/homebridge-airnow/issues"
+  },
+  "homepage": "https://github.com/ToddGreenfield/homebridge-airnow#readme",
+  "dependencies": {
+    "airnow": "^1.0.1"
+  }
+}
