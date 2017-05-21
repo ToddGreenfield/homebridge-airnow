@@ -1,6 +1,6 @@
 {
   "name": "homebridge-airnow",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Homebridge plugin for AirNow (Air Quality)",
   "main": "index.js",
   "scripts": {
@@ -14,10 +14,10 @@
     "homebridge-plugin",
     "homebridge",
     "airnow",
-	"aqicn",
-	"air quality",
-	"waqi",
-	"pollution"
+    "aqicn",
+    "air quality",
+    "waqi",
+    "pollution"
   ],
   "engines": {
     "node": ">=0.12.0",
