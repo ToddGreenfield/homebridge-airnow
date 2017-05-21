@@ -5,17 +5,25 @@
 // "accessories": [
 //     {
 //         "accessory": "AirNow",				// required
-//         "name": "AirNow",					// Optional - defaults to AirNow
-//         "airnow_api": "XXXXXX",				// required - YOUR API key from AirNow
-//         "zipcode": "02860",					// required - Zip code for area being checked
-//         "distance": "25",					// Optional - defaults to 25 miles from zip
-//         "polling": "5"						// Optional - defaults to OFF or 0. Time in seconds.
+//         "name": "AirNow",					// Optional - Defaults to AirNow
+//         "provider": "airnow",				// Optional - Service Provider - defaults to airnow. Valid options are: airnow, aqicn.
+//
+//         "airnow_api": "XXXXXX",				// Optional - Required for AirNow.gov YOUR_API key from AirNowapi.org OR Aqicn (waqi)
+//         "zipcode": "90210",					// Optional - Required for AirNow.gov - Zip code for area being checked
+//         "distance": "25",					// Optional - Only used for AirNow.gov - Defaults to 25 miles from zip
+//
+//		   "aqicn_api": "XXXXXXX"				// Optional - Required for Aqicn.org YOUR_API key from aqcin.org (Provided by api.waqi.info)
+//         "aqicn_city": "Beijing",				// Optional - Only For Aqicn.org - Valid city from http://aqicn.org/city/all/ OR defaults to 'here' which will use Geolocation based on your IP.
+//
+//         "polling": "30"						// Optional - defaults to OFF or 0. Time in minutes.
 //     }
 // ], 
 //
+//  TODO - Rounding issues...
 //
-
-var airnow = require("airnow");
+var lowerCase = require('lower-case');
+var request = require("request");
+var striptags = require("striptags");
 var Service, Characteristic;
 
 var airQualityService;
@@ -29,22 +37,20 @@ module.exports = function (homebridge) {
 function AirNowAccessory(log, config) {
     this.log = log;
     this.name = config['name'] || 'AirNow';
+    this.provider = lowerCase(config['provider']) || "airnow";
     this.zip = config['zipcode'];
     this.distance = config['distance'] || '25';
     this.airnow_api = config['airnow_api'];
-    this.polling = config['polling'] || '0'; // Default is no polling.
+    this.aqicn_api = config['aqicn_api'];
+    this.aqicn_city = config['aqicn_city'] || 'here';
+    this.mpolling = config['polling'] || '0'; // Default is no polling.
+	this.polling = this.mpolling;
 	
-	if (!this.zip) throw new Error("AirNow - You must provide a config value for 'zipcode'.");
-	if (!this.airnow_api) throw new Error("AirNow - You must provide a config value for 'airnow_api'.");
-
-	this.client = airnow({ apiKey: this.airnow_api });
-
-	this.options = {
-		zipCode: this.zip,
-		distance: this.distance,
-		format: "application/json"
-	};
-	
+	if (!this.provider) throw new Error("AirNow - You must provide a config value for 'provider'.");
+	if (this.provider == "airnow" && !this.zip) throw new Error("AirNow - You must provide a config value for 'zipcode' if using provider Airnow.com.");
+	if (this.provider == "airnow" && !this.airnow_api) throw new Error("AirNow - You must provide a config value for 'airnow_api' if using provider Airnow.gov.");
+	if (this.provider == "aqicn" && !this.aqicn_api) throw new Error("AirNow - You must provide a config value for 'aqicn_api' if using provider Aqicn.org.");
+		
 	if (this.polling > 0) {
 		var that = this;
 		this.polling *= 60000;
@@ -53,7 +59,7 @@ function AirNowAccessory(log, config) {
 		}, this.polling);
 	};
 
-	this.log.info("AirNow Polling (minutes) is: %s", (this.polling == '0') ? 'OFF' : this.polling/60000);
+	this.log.info("AirNow using provider %s and Polling (minutes) is: %s", this.provider, (this.polling == '0') ? 'OFF' : this.mpolling);
 	
 }
 
@@ -78,24 +84,97 @@ AirNowAccessory.prototype = {
 
     getObservation: function (callback) {
     	var that = this;
+		var url, aqi;
 
-		this.client.getObservationsByZipCode(this.options, function(err, observations){
-			if (err){
-				that.log.error('Error! An error calling getObservationsByZipCode: ' + err);
-				callback(0);
-			} else {
-				that.log.info("AirNow air quality is: %s - %s", observations[0]["Category"]["Number"], observations[0]["Category"]["Name"]);
-				if (observations[0]["Category"]["Number"] == "6") {
-					callback(5); // Homekit only has 5 states, so if AirNow returns Hazardous, return max of 5.
-				} else if (observations[0]["Category"]["Number"] == "7") {
-					callback(0); // Homekit 0 state is unknown, AirNow unknown is 7.
+		if (this.provider == "airnow") {
+			url = "http://www.airnowapi.org/aq/observation/zipCode/current/?format=application/json&zipCode=" + this.zip +
+			"&distance=" + this.distance + "&API_KEY=" + this.airnow_api;
+			
+			request({
+				url: url,
+				json: true
+			}, function (err, response, observations) {
+				if (!err && response.statusCode === 200){
+					if (typeof observations[0] === 'undefined'){
+						that.log.error("AirNow air quality ERROR - Invalid ZipCode for %s.", that.provider);
+						that.airQualityService.setCharacteristic(Characteristic.StatusFault,1);
+					} else if (typeof observations[0]["AQI"] === 'undefined') {
+						that.log.error("AirNow air quality ERROR - %s for %s.", striptags(observations), that.provider);
+						that.airQualityService.setCharacteristic(Characteristic.StatusFault,1);
+					} else {
+						that.log.info("AirNow air quality AQI is: %s", observations[0]["AQI"]);
+						that.airQualityService.setCharacteristic(Characteristic.StatusFault,0);
+						for (var key in observations) {
+							switch (observations[key]["ParameterName"]) {
+								case 'O3':
+									that.airQualityService.setCharacteristic(Characteristic.OzoneDensity,parseFloat(observations[key]["AQI"]));
+									break;
+								case 'PM2.5':
+									that.airQualityService.setCharacteristic(Characteristic.PM2_5Density,parseFloat(observations[key]["AQI"]));
+									break;
+								case 'PM10':
+									that.airQualityService.setCharacteristic(Characteristic.PM10Density,parseFloat(observations[key]["AQI"]));
+									break;
+							}
+						}
+						aqi = parseFloat(observations[0]["AQI"]); // AirNow.gov defaults to Ozone which should be first parameter.
+					}
 				} else {
-					callback(observations[0]["Category"]["Number"]);
+					that.log.error("AirNow air quality AQI was not returned by %s.", that.provider);
 				}
-			}
-		});
-    },
+				callback(that.trans_aqi(aqi));
+			});
+		} else if (this.provider == "aqicn") {
+			url = "http://api.waqi.info/feed/" + this.aqicn_city + "/?token=" + this.aqicn_api;
 
+			request({
+				url: url,
+				json: true
+			}, function (err, response, observations) {
+				if (!err && response.statusCode === 200 && observations.status == "ok"){
+					that.log.info("AirNow air quality AQI is: %s", observations.data.aqi);
+					that.airQualityService.setCharacteristic(Characteristic.StatusFault,0);
+					(observations.data.iaqi.hasOwnProperty('o3')) ? that.airQualityService.setCharacteristic(Characteristic.OzoneDensity,parseFloat(observations.data.iaqi.o3.v)) : that.airQualityService.setCharacteristic(Characteristic.OzoneDensity,0);
+					(observations.data.iaqi.hasOwnProperty('no2')) ? that.airQualityService.setCharacteristic(Characteristic.NitrogenDioxideDensity,parseFloat(observations.data.iaqi.no2.v)) : that.airQualityService.setCharacteristic(Characteristic.NitrogenDioxideDensity,0);
+					(observations.data.iaqi.hasOwnProperty('so2')) ? that.airQualityService.setCharacteristic(Characteristic.SulphurDioxideDensity,parseFloat(observations.data.iaqi.so2.v)) : that.airQualityService.setCharacteristic(Characteristic.SulphurDioxideDensity,0);
+					(observations.data.iaqi.hasOwnProperty('pm25')) ? that.airQualityService.setCharacteristic(Characteristic.PM2_5Density,parseFloat(observations.data.iaqi.pm25.v)) : that.airQualityService.setCharacteristic(Characteristic.PM2_5Density,0);
+					(observations.data.iaqi.hasOwnProperty('pm10')) ? that.airQualityService.setCharacteristic(Characteristic.PM10Density,parseFloat(observations.data.iaqi.pm10.v)) : that.airQualityService.setCharacteristic(Characteristic.PM10Density,0);
+					(observations.data.iaqi.hasOwnProperty('co')) ? that.airQualityService.setCharacteristic(Characteristic.CarbonMonoxideLevel,parseFloat(observations.data.iaqi.co.v)) : that.airQualityService.setCharacteristic(Characteristic.CarbonMonoxideLevel,0);
+//					(observations.data.iaqi.hasOwnProperty('??')) ? that.airQualityService.setCharacteristic(Characteristic.VOCDensity,parseFloat(observations.data.iaqi.??.v)) : that.airQualityService.setCharacteristic(Characteristic.VOCDensity,0);
+//					(observations.data.iaqi.hasOwnProperty('??')) ? that.airQualityService.setCharacteristic(Characteristic.CarbonDioxideLevel,parseFloat(observations.data.iaqi.??.v)) : that.airQualityService.setCharacteristic(Characteristic.CarbonDioxideLevel,0);
+
+					aqi = parseFloat(observations.data.aqi);
+				} else if (observations.status == "error") {
+					that.log.error("AirNow air quality ERROR - %s from %s.", observations.data, that.provider);
+					that.airQualityService.setCharacteristic(Characteristic.StatusFault,1);
+				} else {
+					that.log.error("AirNow air quality Unknown Error from %s.", that.provider);
+					that.airQualityService.setCharacteristic(Characteristic.StatusFault,1);
+				}
+				callback(that.trans_aqi(aqi));
+			});				
+		} 			
+	},
+	
+    trans_aqi: function (aqi) {
+		if (!aqi) {
+			return(0); // Error or unknown response
+		} else if (aqi <= 50) {
+			return(1); // Return EXCELLENT
+		} else if (aqi >= 51 && aqi <= 100) {
+			return(2); // Return GOOD
+		} else if (aqi >= 101 && aqi <= 150) {
+			return(3); // Return FAIR
+		} else if (aqi >= 151 && aqi <= 200) {
+			return(4); // Return INFERIOR
+		} else if (aqi >= 201) {
+			return(5); // Return POOR (Homekit only goes to cat 5, so combined the last two AQI cats of Very Unhealty and Hazardous.
+		} else {
+			return(0); // Error or unknown response.
+		}
+    },
+	
+	
     identify: function (callback) {
         this.log("Identify requested!");
         callback(); // success
@@ -106,15 +185,22 @@ AirNowAccessory.prototype = {
         var informationService = new Service.AccessoryInformation();
 
         informationService
-                .setCharacteristic(Characteristic.Manufacturer, "AirNow")
-                .setCharacteristic(Characteristic.Model, "ZipCode")
-                .setCharacteristic(Characteristic.SerialNumber, this.zip);
+                .setCharacteristic(Characteristic.Manufacturer, this.provider)
+                .setCharacteristic(Characteristic.Model, (this.provider == "aqicn") ? ((this.aqicn_city == "here") ? "GeoLocation" : this.aqicn_city) : "Zip:" + this.zip)
+                .setCharacteristic(Characteristic.SerialNumber, "Polling: " + this.mpolling);
 		services.push(informationService);
 		
         this.airQualityService = new Service.AirQualitySensor(this.name);
         this.airQualityService
                 .getCharacteristic(Characteristic.AirQuality)
                 .on('get', this.getAirQuality.bind(this));
+		this.airQualityService.addCharacteristic(Characteristic.StatusFault); // Used if unable to connect to AQI services		
+		this.airQualityService.addCharacteristic(Characteristic.OzoneDensity); 	
+		this.airQualityService.addCharacteristic(Characteristic.NitrogenDioxideDensity); 		
+		this.airQualityService.addCharacteristic(Characteristic.SulphurDioxideDensity);
+		this.airQualityService.addCharacteristic(Characteristic.PM2_5Density);
+		this.airQualityService.addCharacteristic(Characteristic.PM10Density);
+		this.airQualityService.addCharacteristic(Characteristic.CarbonMonoxideLevel);
 		services.push(this.airQualityService);
 		
         return services;
