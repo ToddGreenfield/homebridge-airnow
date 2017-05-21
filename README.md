@@ -24,17 +24,17 @@ Example config.json:
 
 ```js
 "accessories": [
-     {
-         "accessory": "AirNow",
-         "name": "AirNow",
-		 "provider": "airnow",
-         "airnow_api": "XXXXXX",
-         "zipcode": "02860",
-         "distance": "25",
-         "aqicn_api": "XXXXXX",
-		 "aqicn_city": "beijing",
-         "polling": "30"
-     }
+	{
+		"accessory": "AirNow",
+		"name": "AirNow",
+		"provider": "airnow",
+		"airnow_api": "XXXXXX",
+		"zipcode": "02860",
+		"distance": "25",
+		"aqicn_api": "XXXXXX",
+		"aqicn_city": "beijing",
+		"polling": "30"
+	}
 ], 
 ```
 
