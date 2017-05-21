@@ -13,7 +13,11 @@
   "keywords": [
     "homebridge-plugin",
     "homebridge",
-    "airnow"
+    "airnow",
+	"aqicn",
+	"air quality",
+	"waqi",
+	"pollution"
   ],
   "engines": {
     "node": ">=0.12.0",
