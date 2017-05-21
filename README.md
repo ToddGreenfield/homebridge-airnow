@@ -4,10 +4,11 @@
 Air Quality Index Sensor Plugin for [Homebridge](https://github.com/nfarina/homebridge) 
 This plugin allows you to monitor your current AirQuality from HomeKit and Siri.
 
-Current supports two AQI Services:
-1. [AirNow](https://www.airnow.gov) which is limited to the USA. ZipCode required.
-2. [Aqicn](https://www.aqicn.org) which has international support. 
-Depending on where exactly you would like to monitor AQI, one service may be more appropriate.
+Currently supports two AQI Services:
+1. [AirNow](https://www.airnow.gov) which is limited to the USA. A valid ZipCode is required.
+2. [Aqicn](https://www.aqicn.org) which has international support, provided by the [World Air Quality Index Project](http://waqi.info/).
+
+Depending on where exactly you would like to monitor AQI, one service may be more appropriate than the other.
 
 ## Installation
 1. Install homebridge using: `npm install -g homebridge`
@@ -41,12 +42,12 @@ Example config.json:
 
 Field           		| Description
 ------------------------|------------
-**accessory**   		| Required - Must always be "AirNow".
-**name**        		| Optional - Name override for the logging. Default is AirNow. 
+**accessory**   		| Required - Must be "AirNow".
+**name**        		| Optional - Name override for logging. Default is AirNow. 
 **provider**       		| Required - Name of the AQI provider service. Valid options are: airnow, aqicn. Default is airnow. 
 **airnow_api** 			| Optional - Required for AirNow.gov. YOUR API key from AirNow.gov.
-**zipcode**				| Optional - Required for AirNow. This is the Zip code for the area being checked.
-**distance**			| Optional - Only used for AirNow.gov - Distance to search for monitoring station from zipcode. Defaults to 25 miles from zip.
+**zipcode**				| Optional - Required and only for AirNow. This is the Zip code for the area being checked.
+**distance**			| Optional - Optional and only used for AirNow.gov - Distance to search for monitoring station from zipcode. Defaults to 25 miles from zip.
 **aqicn_api** 			| Optional - Required for Aqicn.org. YOUR API key from Aqicn.org.
-**aqicn_city**			| Optional - Only used for Aqicn.org - A valid city from http://aqicn.org/city/all/ OR defaults to 'here' which will use Geolocation based on your IP. If your city is multi-part, look at the aqicn URL (http://aqicn.org/city/losangeles/reseda/). The aqicn_city parameter for this would be 'losangeles/reseda'.
+**aqicn_city**			| Optional - Optional and only used for Aqicn.org - A valid city from http://aqicn.org/city/all/ OR defaults to 'here' which will use Geolocation based on your IP. If your city is a multi-part name, look at that aqicn URL (http://aqicn.org/city/losangeles/reseda/). The aqicn_city parameter using this example would be 'losangeles/reseda'.
 **polling**				| Optional - Poll interval. Default is 0 sec, which is OFF or no polling.
