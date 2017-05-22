@@ -25,7 +25,7 @@ Example config.json:
 ```js
 "accessories": [
 	{
-		"accessory": "AirNow",
+		"accessory": "airnow",
 		"name": "AirNow",
 		"provider": "airnow",
 		"airnow_api": "XXXXXX",
@@ -42,7 +42,7 @@ Example config.json:
 
 Field           		| Description
 ------------------------|------------
-**accessory**   		| Required - Must be "AirNow".
+**accessory**   		| Required - Must be "airnow" (all lowercase).
 **name**        		| Optional - Name override for logging. Default is AirNow. 
 **provider**       		| Required - Name of the AQI provider service. Valid options are: airnow, aqicn. Default is airnow. 
 **airnow_api** 			| Optional - Required for AirNow.gov. YOUR API key from AirNow.gov.
