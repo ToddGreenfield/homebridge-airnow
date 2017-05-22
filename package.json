@@ -1,6 +1,6 @@
 {
   "name": "homebridge-airnow",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Homebridge plugin for AirNow (Air Quality)",
   "main": "index.js",
   "scripts": {
