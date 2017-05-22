@@ -5,7 +5,7 @@
 // "accessories": [
 //     {
 //         "accessory": "airnow",				// required (all lowercase)
-//         "name": "AirNow",					// Optional - Defaults to AirNow
+//         "name": "AirNow",					// required - For homebridge and logging
 //         "provider": "airnow",				// Optional - Service Provider - defaults to airnow. Valid options are: airnow, aqicn.
 //
 //         "airnow_api": "XXXXXX",				// Optional - Required for AirNow.gov YOUR_API key from AirNowapi.org OR Aqicn (waqi)
@@ -36,7 +36,7 @@ module.exports = function (homebridge) {
 
 function AirNowAccessory(log, config) {
     this.log = log;
-    this.name = config['name'] || 'AirNow';
+    this.name = config['name'];
     this.provider = lowerCase(config['provider']) || "airnow";
     this.zip = config['zipcode'];
     this.distance = config['distance'] || '25';
