@@ -4,7 +4,7 @@
 // Remember to add accessory to config.json. Example:
 // "accessories": [
 //     {
-//         "accessory": "AirNow",				// required
+//         "accessory": "airnow",				// required (all lowercase)
 //         "name": "AirNow",					// Optional - Defaults to AirNow
 //         "provider": "airnow",				// Optional - Service Provider - defaults to airnow. Valid options are: airnow, aqicn.
 //
