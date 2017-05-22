@@ -43,7 +43,7 @@ Example config.json:
 Field           		| Description
 ------------------------|------------
 **accessory**   		| Required - Must be "airnow" (all lowercase).
-**name**        		| Optional - Name override for logging. Default is AirNow. 
+**name**        		| Required - Name override for logging. 
 **provider**       		| Required - Name of the AQI provider service. Valid options are: airnow, aqicn. Default is airnow. 
 **airnow_api** 			| Optional - Required for AirNow.gov. YOUR API key from AirNow.gov.
 **zipcode**				| Optional - Required and only for AirNow. This is the Zip code for the area being checked.
