@@ -83,7 +83,8 @@ AirNowAccessory.prototype = {
 
     getObservation: function (callback) {
     	var that = this;
-		var url, aqi;
+      var url, aqi;
+      aqi = 0;
 
 		if (this.provider == "airnow") {
 			url = "http://www.airnowapi.org/aq/observation/zipCode/current/?format=application/json&zipCode=" + this.zip +
@@ -101,8 +102,6 @@ AirNowAccessory.prototype = {
 						that.log.error("AirNow air quality ERROR - %s for %s.", striptags(observations), that.provider);
 						that.airQualityService.setCharacteristic(Characteristic.StatusFault,1);
 					} else {
-						that.log.info("AirNow air quality AQI is: %s", observations[0]["AQI"]);
-						that.airQualityService.setCharacteristic(Characteristic.StatusFault,0);
 						for (var key in observations) {
 							switch (observations[key]["ParameterName"]) {
 								case 'O3':
@@ -115,8 +114,10 @@ AirNowAccessory.prototype = {
 									that.airQualityService.setCharacteristic(Characteristic.PM10Density,parseFloat(observations[key]["AQI"]));
 									break;
 							}
+              aqi = Math.max(aqi,parseFloat(observations[key]["AQI"])) // AirNow.gov defaults to MAX returned observation.
 						}
-						aqi = parseFloat(observations[0]["AQI"]); // AirNow.gov defaults to Ozone which should be first parameter.
+            that.log.info("AirNow air quality AQI is: %s", aqi.toString());
+            that.airQualityService.setCharacteristic(Characteristic.StatusFault,0);
 					}
 				} else {
 					that.log.error("AirNow air quality AQI was not returned by %s.", that.provider);
