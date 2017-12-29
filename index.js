@@ -43,7 +43,7 @@ function AirNowAccessory(log, config) {
     this.aqicn_api = config['aqicn_api'];
     this.aqicn_city = config['aqicn_city'] || 'here';
     this.mpolling = config['polling'] || '0'; // Default is no polling.
-	this.polling = this.mpolling;
+    this.polling = this.mpolling;
 
 	if (!this.provider) throw new Error("AirNow - You must provide a config value for 'provider'.");
 	if (this.provider == "airnow" && !this.zip) throw new Error("AirNow - You must provide a config value for 'zipcode' if using provider Airnow.com.");

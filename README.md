@@ -17,7 +17,7 @@ Depending on where exactly you would like to monitor AQI, one service may be mor
 4. Ensure you have either an AirNow.gov or Aqicn.org API account to use that web service and have a valid API_KEY for that web service.
 For assistance visit - https://docs.airnowapi.org/faq or http://aqicn.org/data-platform/token/#/.
 
-This plugin will create an AirQualitySensor element. The Home app works well, but the Eve app seems to show more measurements. Measurements retrieved are PM2.5, PM10, & O3 for AirNow. Aqicn adds NO2, SO2, CO.  
+This plugin will create an AirQualitySensor element. The Home app works well, but the Eve app seems to show more measurements. Measurements retrieved are PM2.5, PM10, & O3 for AirNow. Aqicn adds NO2, SO2, CO...  
 
 ## Configuration
 Example config.json:
