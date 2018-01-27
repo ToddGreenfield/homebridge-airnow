@@ -65,7 +65,7 @@ function AirNowAccessory(log, config) {
 AirNowAccessory.prototype = {
 
 	servicePolling: function(){
-		this.log.info('AirNow Polling...');
+		this.log.debug('AirNow Polling...');
 		this.getObservation(function(p) {
 			var that = this;
 			that.airQualityService.setCharacteristic(Characteristic.AirQuality, p);
@@ -116,7 +116,7 @@ AirNowAccessory.prototype = {
 							}
               aqi = Math.max(aqi,parseFloat(observations[key]["AQI"])) // AirNow.gov defaults to MAX returned observation.
 						}
-            that.log.info("AirNow air quality AQI is: %s", aqi.toString());
+            that.log.debug("AirNow air quality AQI is: %s", aqi.toString());
             that.airQualityService.setCharacteristic(Characteristic.StatusFault,0);
 					}
 				} else {
@@ -132,7 +132,7 @@ AirNowAccessory.prototype = {
 				json: true
 			}, function (err, response, observations) {
 				if (!err && response.statusCode === 200 && observations.status == "ok"){
-					that.log.info("AirNow air quality AQI is: %s", observations.data.aqi);
+					that.log.debug("AirNow air quality AQI is: %s", observations.data.aqi);
 					that.airQualityService.setCharacteristic(Characteristic.StatusFault,0);
 					(observations.data.iaqi.hasOwnProperty('o3')) ? that.airQualityService.setCharacteristic(Characteristic.OzoneDensity,parseFloat(observations.data.iaqi.o3.v)) : that.airQualityService.setCharacteristic(Characteristic.OzoneDensity,0);
 					(observations.data.iaqi.hasOwnProperty('no2')) ? that.airQualityService.setCharacteristic(Characteristic.NitrogenDioxideDensity,parseFloat(observations.data.iaqi.no2.v)) : that.airQualityService.setCharacteristic(Characteristic.NitrogenDioxideDensity,0);
