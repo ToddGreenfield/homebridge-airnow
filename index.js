@@ -96,10 +96,10 @@ AirNowAccessory.prototype = {
 			}, function (err, response, observations) {
 				if (!err && response.statusCode === 200){
 					if (typeof observations[0] === 'undefined'){
-						that.log.error("AirNow air quality ERROR - Invalid ZipCode for %s.", that.provider);
+						that.log.error("AirNow air quality Configuration Error - Invalid ZipCode for %s.", that.provider);
 						that.airQualityService.setCharacteristic(Characteristic.StatusFault,1);
 					} else if (typeof observations[0]["AQI"] === 'undefined') {
-						that.log.error("AirNow air quality ERROR - %s for %s.", striptags(observations), that.provider);
+						that.log.error("AirNow air quality Observation Error - %s for %s.", striptags(observations), that.provider);
 						that.airQualityService.setCharacteristic(Characteristic.StatusFault,1);
 					} else {
 						for (var key in observations) {
@@ -120,7 +120,8 @@ AirNowAccessory.prototype = {
             that.airQualityService.setCharacteristic(Characteristic.StatusFault,0);
 					}
 				} else {
-					that.log.error("AirNow air quality AQI was not returned by %s.", that.provider);
+          that.log.error("AirNow air quality Network or Unknown Error from %s.", that.provider);
+          that.airQualityService.setCharacteristic(Characteristic.StatusFault,1);
 				}
 				callback(that.trans_aqi(aqi));
 			});
@@ -131,7 +132,7 @@ AirNowAccessory.prototype = {
 				url: url,
 				json: true
 			}, function (err, response, observations) {
-				if (!err && response.statusCode === 200 && observations.status == "ok"){
+				if (!err && response.statusCode === 200 && observations.status == "ok" && observations.data.idx != "-1"){
 					that.log.debug("AirNow air quality AQI is: %s", observations.data.aqi);
 					that.airQualityService.setCharacteristic(Characteristic.StatusFault,0);
 					(observations.data.iaqi.hasOwnProperty('o3')) ? that.airQualityService.setCharacteristic(Characteristic.OzoneDensity,parseFloat(observations.data.iaqi.o3.v)) : that.airQualityService.setCharacteristic(Characteristic.OzoneDensity,0);
@@ -144,11 +145,12 @@ AirNowAccessory.prototype = {
 //					(observations.data.iaqi.hasOwnProperty('??')) ? that.airQualityService.setCharacteristic(Characteristic.CarbonDioxideLevel,parseFloat(observations.data.iaqi.??.v)) : that.airQualityService.setCharacteristic(Characteristic.CarbonDioxideLevel,0);
 
 					aqi = parseFloat(observations.data.aqi);
-				} else if (observations.status == "error") {
-					that.log.error("AirNow air quality ERROR - %s from %s.", observations.data, that.provider);
-					that.airQualityService.setCharacteristic(Characteristic.StatusFault,1);
+				} else if (!err && observations.status == "error") {
+					that.log.error("AirNow air quality Observation Error - %s from %s.", observations.data, that.provider);
+        } else if (!err && observations.status == "ok" && observations.data.idx == "-1") {
+					that.log.error("AirNow air quality Configuration Error - Invalid City Code from %s.", that.provider);
 				} else {
-					that.log.error("AirNow air quality Unknown Error from %s.", that.provider);
+					that.log.error("AirNow air quality Network or Unknown Error from %s.", that.provider);
 					that.airQualityService.setCharacteristic(Characteristic.StatusFault,1);
 				}
 				callback(that.trans_aqi(aqi));
