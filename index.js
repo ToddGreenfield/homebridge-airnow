@@ -6,14 +6,16 @@
 //     {
 //         "accessory": "airnow",				// required (all lowercase)
 //         "name": "AirNow",					// required - For homebridge and logging
-//         "provider": "airnow",				// Optional - Service Provider - defaults to airnow. Valid options are: airnow, aqicn.
+//         "provider": "airnow",				// Optional - Service Provider - defaults to airnow. Valid options are: airnow, aqicni, gamta.
 //
 //         "airnow_api": "XXXXXX",				// Optional - Required for AirNow.gov YOUR_API key from AirNowapi.org OR Aqicn (waqi)
 //         "zipcode": "90210",					// Optional - Required for AirNow.gov - Zip code for area being checked
 //         "distance": "25",					// Optional - Only used for AirNow.gov - Defaults to 25 miles from zip
 //
-//         "aqicn_api": "XXXXXXX"       // Optional - Required for Aqicn.org YOUR_API key from aqcin.org (Provided by api.waqi.info)
+//         "aqicn_api": "XXXXXXX"				// Optional - Required for Aqicn.org YOUR_API key from aqcin.org (Provided by api.waqi.info)
 //         "aqicn_city": "@245",				// Optional - Only For Aqicn.org - Valid city @code from http://aqicn.org/city/all/ OR defaults to 'here' which will use Geolocation based on your IP.
+//
+//         "gamta_station": "0002"				// Optional - check Your nearest station ID http://stoteles.gamta.lt/ap3/
 //
 //         "polling": "30"        // Optional - defaults to OFF or 0. Time in minutes.
 //     }
@@ -42,6 +44,7 @@ function AirNowAccessory(log, config) {
     this.airnow_api = config['airnow_api'];
     this.aqicn_api = config['aqicn_api'];
     this.aqicn_city = config['aqicn_city'] || 'here';
+    this.gamta_station = config['gamta_station'];
     this.mpolling = config['polling'] || '0'; // Default is no polling.
     this.polling = this.mpolling;
 
@@ -49,6 +52,7 @@ function AirNowAccessory(log, config) {
 	if (this.provider == "airnow" && !this.zip) throw new Error("AirNow - You must provide a config value for 'zipcode' if using provider Airnow.com.");
 	if (this.provider == "airnow" && !this.airnow_api) throw new Error("AirNow - You must provide a config value for 'airnow_api' if using provider Airnow.gov.");
 	if (this.provider == "aqicn" && !this.aqicn_api) throw new Error("AirNow - You must provide a config value for 'aqicn_api' if using provider Aqicn.org.");
+	if (this.provider == "gamta" && !this.gamta_station) throw new Error("AirNow - You must provide a config value for 'gamta_station' if using provider stoteles.gamta.lt.");
 
 	if (this.polling > 0) {
 		var that = this;
@@ -58,14 +62,19 @@ function AirNowAccessory(log, config) {
 		}, this.polling);
 	};
 
-	this.log.info("AirNow using provider %s and Polling (minutes) is: %s", this.provider, (this.polling == '0') ? 'OFF' : this.mpolling);
+	if (this.provider == "gamta") {
+		this.log.info("AirNow using provider %s, station %s and Polling (minutes) is: %s", this.provider, this.gamta_station, (this.polling == '0') ? 'OFF' : this.mpolling);
+	} else {
+		this.log.info("AirNow using provider %s and Polling (minutes) is: %s", this.provider, (this.polling == '0') ? 'OFF' : this.mpolling);
+	}
 
 }
 
 AirNowAccessory.prototype = {
 
 	servicePolling: function(){
-		this.log.debug('AirNow Polling...');
+		//this.log.debug('AirNow Polling...');
+		this.log.info('AirNow Polling...');
 		this.getObservation(function(p) {
 			var that = this;
 			that.airQualityService.setCharacteristic(Characteristic.AirQuality, p);
@@ -116,7 +125,8 @@ AirNowAccessory.prototype = {
 							}
               aqi = Math.max(aqi,parseFloat(observations[key]["AQI"])) // AirNow.gov defaults to MAX returned observation.
 						}
-            that.log.debug("AirNow air quality AQI is: %s", aqi.toString());
+            //that.log.debug("AirNow air quality AQI is: %s", aqi.toString());
+            that.log.info("AirNow air quality AQI is: %s", aqi.toString());
             that.airQualityService.setCharacteristic(Characteristic.StatusFault,0);
 					}
 				} else {
@@ -133,7 +143,8 @@ AirNowAccessory.prototype = {
 				json: true
 			}, function (err, response, observations) {
 				if (!err && response.statusCode === 200 && observations.status == "ok" && observations.data.idx != "-1"){
-					that.log.debug("AirNow air quality AQI is: %s", observations.data.aqi);
+					//that.log.debug("AirNow air quality AQI is: %s", observations.data.aqi);
+					that.log.info("AirNow air quality AQI is: %s", observations.data.aqi);
 					that.airQualityService.setCharacteristic(Characteristic.StatusFault,0);
 					(observations.data.iaqi.hasOwnProperty('o3')) ? that.airQualityService.setCharacteristic(Characteristic.OzoneDensity,parseFloat(observations.data.iaqi.o3.v)) : that.airQualityService.setCharacteristic(Characteristic.OzoneDensity,0);
 					(observations.data.iaqi.hasOwnProperty('no2')) ? that.airQualityService.setCharacteristic(Characteristic.NitrogenDioxideDensity,parseFloat(observations.data.iaqi.no2.v)) : that.airQualityService.setCharacteristic(Characteristic.NitrogenDioxideDensity,0);
@@ -155,7 +166,85 @@ AirNowAccessory.prototype = {
 				}
 				callback(that.trans_aqi(aqi));
 			});
-		}
+		} else if (this.provider == "gamta") { 
+			url = "http://stoteles.gamta.lt/ap3/SS/index.php?action=updatemap";
+			request({
+				url: url,
+                        	json: true
+                	}, function (err, response, observations) {
+				var co_ppm, stotele;
+				co_ppm=0;
+				stotele=that.gamta_station;
+				if (!err && response.statusCode === 200 && observations.error =="ok"){
+					that.log.debug ("AirNow API error: %s", observations.error);
+					switch ( observations.result[stotele].indeksas ) {
+						case '1':
+							aqi=40;
+							break;
+						case '2':
+							aqi=60;
+							break;
+						case '3':
+							aqi=110;
+							break;
+						case '4':
+							aqi=160;
+							break;
+						case '5':
+							aqi=210;
+							break;
+					}
+					for (var key in observations.result[stotele].kanalai) {
+						switch (observations.result[stotele].kanalai[key]["kanalas"]) {
+							case 'CO':
+								//convert mg/m3 to ppm    X ppm =(Y mg/m3)(24.45)/(MW), where CO MW=28.01
+								//check units mg/m3 vs ug/m3
+								if ( observations.result[stotele].kanalai[key].matavimoVnt == 'mg/m3' ) {
+									co_ppm= parseFloat(observations.result[stotele].kanalai[key].koncentracija) * 24.45 / 28.01;
+								}
+								else if (observations.result[stotele].kanalai[key].matavimoVnt == 'uq/m3') {
+									co_ppm= parseFloat(observations.result[stotele].kanalai[key].koncentracija) * 24.45 / 28.01 * 1000;
+								}
+								that.log.info ("AirNow %s CarbonMonoxydeLevel: %d", stotele, co_ppm.toFixed(2));
+								that.airQualityService.setCharacteristic(Characteristic.CarbonMonoxideLevel,co_ppm);
+								break;
+							case 'O3':
+								// take only 1hr value
+								if (observations.result[stotele].kanalai[key].vidurkisVal == '1') {
+									that.airQualityService.setCharacteristic(Characteristic.OzoneDensity,parseFloat(observations.result[stotele].kanalai[key].koncentracija));
+									that.log.info ("AirNow %s OzoneDensity: %d", stotele, parseFloat(observations.result[stotele].kanalai[key].koncentracija).toFixed(2));
+								}
+								break;
+							case 'NO2':
+								that.airQualityService.setCharacteristic(Characteristic.NitrogenDioxideDensity,parseFloat(observations.result[stotele].kanalai[key].koncentracija));
+								that.log.info ("AirNow %s NitrogenDioxideDensity: %d", stotele, parseFloat(observations.result[stotele].kanalai[key].koncentracija).toFixed(2));
+								break;
+							case 'PM10':
+								that.airQualityService.setCharacteristic(Characteristic.PM10Density,parseFloat(observations.result[stotele].kanalai[key].koncentracija));
+								that.log.info ("AirNow %s PM10Density: %d", stotele, parseFloat(observations.result[stotele].kanalai[key].koncentracija).toFixed(2));
+								break;
+							case 'PM25':
+								that.airQualityService.setCharacteristic(Characteristic.PM2_5Density,parseFloat(observations.result[stotele].kanalai[key].koncentracija));
+								that.log.info ("AirNow %s PM2_5Density: %d", stotele, parseFloat(observations.result[stotele].kanalai[key].koncentracija).toFixed(2));
+								break;
+							case 'SO2':
+								// take only 1hr value
+								if (observations.result[stotele].kanalai[key].vidurkisVal == '1') {
+									that.airQualityService.setCharacteristic(Characteristic.SulphurDioxideDensity,parseFloat(observations.result[stotele].kanalai[key].koncentracija));
+									that.log.info ("AirNow %s SulphurDioxideDensity: %d", stotele, parseFloat(observations.result[stotele].kanalai[key].koncentracija).toFixed(2));
+								}
+								break;
+						}
+					}
+				} else if (!err && response.statusCode === 200 && observations.error !="ok") {
+					that.log.error("AirNow air quality Observation Error - %s from %s.", observations.error, that.provider);
+                        	} else {  
+					that.log.error("AirNow air quality Network or Unknown Error from %s.", that.provider);
+					that.airQualityService.setCharacteristic(Characteristic.StatusFault,1);
+                        	}
+				callback(that.trans_aqi(aqi));
+			});
+		} 
 	},
 
     trans_aqi: function (aqi) {
@@ -188,7 +277,7 @@ AirNowAccessory.prototype = {
 
         informationService
                 .setCharacteristic(Characteristic.Manufacturer, this.provider)
-                .setCharacteristic(Characteristic.Model, (this.provider == "aqicn") ? ((this.aqicn_city == "here") ? "GeoLocation" : this.aqicn_city) : "Zip:" + this.zip)
+                .setCharacteristic(Characteristic.Model, (this.provider == "aqicn") ? ((this.aqicn_city == "here") ? "GeoLocation" : this.aqicn_city) : (this.provider == 'gamta' ? this.gamta_station : "Zip:" + this.zip))
                 .setCharacteristic(Characteristic.SerialNumber, "Polling: " + this.mpolling);
 		services.push(informationService);
 
