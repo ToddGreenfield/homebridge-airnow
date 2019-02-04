@@ -7,6 +7,7 @@ This plugin allows you to monitor your current AirQuality from HomeKit and Siri.
 Currently supports two AQI Services:
 1. [AirNow](https://www.airnow.gov) which is limited to the USA. A valid ZipCode is required.
 2. [Aqicn](https://www.aqicn.org) which has international support, provided by the [World Air Quality Index Project](http://waqi.info/).
+3. [Gamta](http://stoteles.gamta.lt/ap3/) AQI provider in Lithuania.
 
 Depending on where exactly you would like to monitor AQI, one service may be more appropriate than the other.
 
@@ -14,8 +15,9 @@ Depending on where exactly you would like to monitor AQI, one service may be mor
 1. Install homebridge using: `npm install -g homebridge`
 2. Install this plugin using: `npm install -g homebridge-airnow`
 3. Update your configuration file like the example below.
-4. Ensure you have either an AirNow.gov or Aqicn.org API account to use that web service and have a valid API_KEY for that web service.
+4. Ensure you have either an AirNow.gov or Aqicn.org API account to use that web service and have a valid API_KEY for that web service. For Gamta provider, You need nearest station #ID (please check config example below).
 For assistance visit - https://docs.airnowapi.org/faq or http://aqicn.org/data-platform/token/#/.
+
 
 This plugin will create an AirQualitySensor element. The Home app works well, but the Eve app seems to show more measurements. Measurements retrieved are PM2.5, PM10, & O3 for AirNow. Aqicn adds NO2, SO2, CO...  
 
@@ -33,6 +35,19 @@ Example config.json:
 		"distance": "25",
 		"aqicn_api": "XXXXXX",
 		"aqicn_city": "@245",
+		"polling": "30"
+	}
+],
+```
+
+Example config.json for "Gamta" AQI provider:
+```js
+"accessories": [
+	{
+		"accessory": "airnow",
+		"name": "AirNow",
+		"provider": "gamta",
+		"gamta_station": "0001",
 		"polling": "30"
 	}
 ],
