@@ -41,6 +41,7 @@ function AirNowAccessory(log, config) {
     this.provider = lowerCase(config['provider']) || "airnow";
     this.zip = config['zipcode'];
     this.distance = config['distance'] || '25';
+    this.show_aqi_in_concentration = config['show_aqi_in_concentration'] || false;
     this.airnow_api = config['airnow_api'];
     this.aqicn_api = config['aqicn_api'];
     this.aqicn_city = config['aqicn_city'] || 'here';
@@ -114,13 +115,42 @@ AirNowAccessory.prototype = {
 						for (var key in observations) {
 							switch (observations[key]["ParameterName"]) {
 								case 'O3':
-									that.airQualityService.setCharacteristic(Characteristic.OzoneDensity,parseFloat(observations[key]["AQI"]));
+									var aqi = parseFloat(observations[key]["AQI"]);
+									var value;
+									if (that.show_aqi_in_concentration) {
+										value = aqi;
+									} else {
+										var ppb = that.ozoneConcentrationFrom(aqi);
+										that.log.debug("Ozone concentration calculated at %s ppb", ppb);
+										var c = that.ppb2ugm3forOzone(aqi);
+										that.log.debug("Ozone concentration converted %s ug/m3", c);
+										value = c;
+									}
+									that.airQualityService.setCharacteristic(Characteristic.OzoneDensity, value);
 									break;
 								case 'PM2.5':
-									that.airQualityService.setCharacteristic(Characteristic.PM2_5Density,parseFloat(observations[key]["AQI"]));
+									var aqi = parseFloat(observations[key]["AQI"]);
+									var value;
+									if (that.show_aqi_in_concentration) {
+										value = aqi;
+									} else {
+										var c = that.pm25ConcentrationFrom(aqi);
+										that.log.debug("PM 2.5 concentration calculated at %s ug/m3", c);
+										value = c;
+									}
+									that.airQualityService.setCharacteristic(Characteristic.PM2_5Density, value);
 									break;
 								case 'PM10':
-									that.airQualityService.setCharacteristic(Characteristic.PM10Density,parseFloat(observations[key]["AQI"]));
+									var aqi = parseFloat(observations[key]["AQI"]);
+									var value;
+									if (that.show_aqi_in_concentration) {
+										value = aqi;
+									} else {
+										var c = that.pm10ConcentrationFrom(aqi);
+										that.log.debug("PM 10 concentration calculated at %s ug/m3", c);
+										value = c;
+									}
+									that.airQualityService.setCharacteristic(Characteristic.PM10Density, value);
 									break;
 							}
               aqi = Math.max(aqi,parseFloat(observations[key]["AQI"])) // AirNow.gov defaults to MAX returned observation.
@@ -265,6 +295,78 @@ AirNowAccessory.prototype = {
 		}
     },
 
+		ozoneConcentrationFrom: function (aqi) {
+			var concentration = 0;
+			if (aqi >= 0 && aqi <= 50) {
+				concentration = aqiInvLinear(50, 0, 54, 0, aqi);
+			} else if (aqi > 50 && aqi <= 100) {
+				concentration = aqiInvLinear(100, 51, 70, 55, aqi);
+			} else if (aqi > 100 && aqi <= 150) {
+				concentration = aqiInvLinear(150, 101, 85, 71, aqi);
+			} else if (aqi > 150 && aqi <= 200) {
+				ConcCalc = aqiInvLinear(200, 151, 105, 86, aqi);
+			} else if (aqi > 200 && aqi <= 300) {
+				concentration = aqiInvLinear(300, 201, 200, 106, aqi);
+			} else {
+				concentration = NaN;
+			}
+			return concentration;
+		},
+
+		pm25ConcentrationFrom: function (aqi) {
+			var concentration = 0;
+			if (aqi >= 0 && aqi <= 50) {
+				concentration = this.aqiInvLinear(50, 0, 12, 0, aqi);
+			} else if (aqi > 50 && aqi <= 100) {
+				concentration = this.aqiInvLinear(100, 51, 35.4, 12.1, aqi);
+			} else if (aqi > 100 && aqi <= 150) {
+				concentration = this.aqiInvLinear(150, 101, 55.4, 35.5, aqi);
+			} else if (aqi > 150 && aqi <= 200) {
+				concentration = this.aqiInvLinear(200, 151, 150.4, 55.5, aqi);
+			} else if (aqi > 200 && aqi <= 300) {
+				concentration = this.aqiInvLinear(300, 201, 250.4, 150.5, aqi);
+			} else if (aqi > 300 && aqi <= 400) {
+				concentration = this.aqiInvLinear(400, 301, 350.4, 250.5, aqi);
+			} else if (aqi > 400 && aqi <= 500) {
+				concentration = this.aqiInvLinear(500, 401, 500.4, 350.5, aqi);
+			} else {
+				concentration = NaN;
+			}
+			// round to one tenth place
+			return Math.round(concentration * 10) / 10;
+		},
+
+		pm10ConcentrationFrom: function (aqi) {
+			let concentration = 0;
+			if (aqi >= 0 && aqi <= 50) {
+				concentration = this.aqiInvLinear(50, 0, 54, 0, aqi);
+			} else if (aqi > 50 && aqi <= 100) {
+				concentration = this.aqiInvLinear(100, 51, 154, 55, aqi);
+			} else if (aqi > 100 && aqi <= 150) {
+				concentration = this.aqiInvLinear(150, 101, 254, 155, aqi);
+			} else if (aqi > 150 && aqi <= 200) {
+				concentration = this.aqiInvLinear(200, 151, 354, 255, aqi);
+			} else if (aqi > 200 && aqi <= 300) {
+				concentration = this.aqiInvLinear(300, 201, 424, 355, aqi);
+			} else if (aqi > 300 && aqi <= 400) {
+				concentration = this.aqiInvLinear(400, 301, 504, 425, aqi);
+			} else if (aqi > 400 && aqi <= 500) {
+				concentration = this.aqiInvLinear(500, 401, 604, 505, aqi);
+			} else {
+				concentration = NaN;
+			}
+			// round to ones place
+			return Math.round(concentration);
+		},
+
+		aqiInvLinear: function (aqi_high, aqi_low, c_high, c_low, aqi) {
+			return ((aqi - aqi_low) / (aqi_high - aqi_low)) * (c_high - c_low) + c_low;
+		},
+
+		ppb2ugm3forOzone: function (ppb) {
+			// round to one thousandth place
+			return 109.61 / 54 * ppb;
+		},
 
     identify: function (callback) {
         this.log("Identify requested!");
